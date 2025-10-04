@@ -1,0 +1,10 @@
+numpy
+pandas
+scikit-learn
+torch
+tqdm
+wandb
+joblib
+tabpfn==2.1.0
+tabicl
+openml
