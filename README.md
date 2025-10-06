@@ -31,7 +31,7 @@ This repository provides code and utilities for training and evaluating wide Tab
 This project uses patches (see `tabpfnwide/patches.py`) to extend or modify the behavior of external libraries such as TabPFN. This approach makes it easy to share and inject new functionality without modifying the original source code.
 
 **However, please note:**
-The APIs of the TabPFN package and related dependencies are actively changing. Patches may break unexpectedly with new releases, leading to subtle bugs or runtime errors.
+The APIs of the TabPFN package and related dependencies have changed and are actively changing. Patches may break unexpectedly with new releases, leading to subtle bugs or runtime errors. The current implementation is tested with the versions specified in `requirements.txt`. However, we note that the patches are not necessary for training and using TabPFN-Wide models, but only for the analysis scripts as well as extracting attention weights.
 
 ## Setup
 1. Create and activate a Python environment (e.g., with conda or venv).

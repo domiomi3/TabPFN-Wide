@@ -29,6 +29,8 @@ def fit(self, X: XType, y: YType, model=None) -> Self:
         raise ValueError(
             "The fit() function is currently not supported in the batched fit_mode."
         )
+        
+    # This line was added to allow a custom model to be passed to fit()
     if model:
         self.model_ = model
 
@@ -106,6 +108,7 @@ def compute_attention_heads(  # noqa: C901, PLR0912
     dropout_p: float | None = None,
     softmax_scale: float | None = None,
 ) -> torch.Tensor:
+    """ This function was made a class method by adding 'self' as the first argument to allow access to class attributes"""
     assert (k is None) == (v is None)
     assert sum([qkv is None, kv is None, k is None and v is None]) == 2
     assert (qkv is None) != (q is None)
@@ -236,12 +239,12 @@ def compute_attention_heads(  # noqa: C901, PLR0912
         else:
             extra_inputs["enable_gqa"] = True
             
+        ### This part was added to extract attention maps
         if getattr(self, "save_att_map", False) and self.number_of_samples > 0: 
-            slice_size = max(v.shape[0] // 200,1) # slice over the first dimension; picked arbitrarily
             attention_map_cpu = torch.zeros(q.shape[1], k.shape[1])
-            for i in range(0, v.shape[0], slice_size):
-                q_slice = q[i : i + slice_size]
-                k_slice = k[i : i + slice_size]
+            for i in range(0, v.shape[0], 1):
+                q_slice = q[i : i + 1]
+                k_slice = k[i : i + 1]
                 
                 logits = torch.einsum("b q h d, b k h d -> b q k h", q_slice, k_slice)
                 logits *= (
@@ -260,6 +263,7 @@ def compute_attention_heads(  # noqa: C901, PLR0912
                 self.attention_map = attention_map_cpu
             else:
                 self.attention_map += attention_map_cpu
+        ### End of added part
             
         attention_head_outputs = torch.nn.functional.scaled_dot_product_attention(
             q.transpose(1, 2),
@@ -270,12 +274,12 @@ def compute_attention_heads(  # noqa: C901, PLR0912
         )
         attention_head_outputs = attention_head_outputs.transpose(1, 2)
     else:
+        ### This part was added to extract attention maps
         if getattr(self, "save_att_map", False) and self.number_of_samples > 0: 
-            slice_size = max(v.shape[0] // 200,1) # slice over the first dimension; picked arbitrarily
             attention_map_cpu = torch.zeros(q.shape[1], k.shape[1])
-            for i in range(0, v.shape[0], slice_size):
-                q_slice = q[i : i + slice_size]
-                k_slice = k[i : i + slice_size]
+            for i in range(0, v.shape[0]):
+                q_slice = q[i : i + 1]
+                k_slice = k[i : i + 1]
                 
                 logits = torch.einsum("b q h d, b k h d -> b q k h", q_slice, k_slice)
                 logits *= (
@@ -294,6 +298,8 @@ def compute_attention_heads(  # noqa: C901, PLR0912
                 self.attention_map = attention_map_cpu
             else:
                 self.attention_map += attention_map_cpu
+        ### End of added part
+                
         k = MultiHeadAttention.broadcast_kv_across_heads(k, share_kv_across_n_heads)
         v = MultiHeadAttention.broadcast_kv_across_heads(v, share_kv_across_n_heads)
         logits = torch.einsum("b q h d, b k h d -> b q k h", q, k)
