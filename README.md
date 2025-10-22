@@ -1,3 +1,6 @@
+## Update (22.10.25): 
+Switch to tabpfn version 2.2.1
+
 # TabPFN-Wide
 
 This repository provides code and utilities for training and evaluating wide TabPFN-Wide models on multi-omics and tabular datasets. It includes scripts, reusable modules, analysis tools, and pretrained models.

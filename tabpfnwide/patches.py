@@ -2,7 +2,7 @@ import contextlib
 from tabpfn.constants import XType, YType
 from tabpfn.utils import infer_random_state
 from tabpfn.base import determine_precision, create_inference_engine
-from tabpfn.model.attention.full_attention import MultiHeadAttention, HAVE_FLASH_ATTN
+from tabpfn.architectures.base.attention.full_attention import MultiHeadAttention, HAVE_FLASH_ATTN
 from tabpfn.model.memory import support_save_peak_mem_factor
 from sklearn import config_context
 from typing import Self
@@ -33,7 +33,6 @@ def fit(self, X: XType, y: YType, model=None) -> Self:
     # This line was added to allow a custom model to be passed to fit()
     if model:
         self.model_ = model
-
     # Create the inference engine
     self.executor_ = create_inference_engine(
         X_train=X,
@@ -42,7 +41,7 @@ def fit(self, X: XType, y: YType, model=None) -> Self:
         ensemble_configs=ensemble_configs,
         cat_ix=self.inferred_categorical_indices_,
         fit_mode=self.fit_mode,
-        device_=self.device_,
+        devices_=self.devices_,
         rng=rng,
         n_jobs=self.n_jobs,
         byte_size=byte_size,

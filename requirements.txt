@@ -5,6 +5,6 @@ torch
 tqdm
 wandb
 joblib
-tabpfn==2.1.0
+tabpfn==2.2.1
 tabicl
 openml
