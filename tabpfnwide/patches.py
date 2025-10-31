@@ -1,15 +1,21 @@
 import contextlib
+import torch
+import logging
+
+from sklearn import config_context
+from typing import Self
+
 from tabpfn.constants import XType, YType
 from tabpfn.utils import infer_random_state
 from tabpfn.base import determine_precision, create_inference_engine
 from tabpfn.architectures.base.attention.full_attention import MultiHeadAttention, HAVE_FLASH_ATTN
 from tabpfn.model.memory import support_save_peak_mem_factor
-from sklearn import config_context
-from typing import Self
-import torch
+from tabpfn import TabPFNClassifier
+from tabpfn.preprocessing import EnsembleConfig
+
 
 @config_context(transform_output="default")  # type: ignore
-def fit(self, X: XType, y: YType, model=None) -> Self:
+def fit(self, X: XType, y: YType, model=None, ) -> Self:
     """Fit the model.
 
     Args:
@@ -52,6 +58,73 @@ def fit(self, X: XType, y: YType, model=None) -> Self:
     )
 
     return self
+
+
+def fit_from_preprocessed(
+        self,
+        X_preprocessed: list[torch.Tensor],
+        y_preprocessed: list[torch.Tensor],
+        cat_ix: list[list[int]],
+        configs: list[list[EnsembleConfig]],
+        *,
+        no_refit: bool = True,
+        model=None,
+    ) -> TabPFNClassifier:
+        """Used in Fine-Tuning. Fit the model to preprocessed inputs from torch
+        dataloader inside a training loop a Dataset provided by
+        get_preprocessed_datasets. This function sets the fit_mode attribute
+        to "batched" internally.
+
+        Args:
+            X_preprocessed: The input features obtained from the preprocessed Dataset
+                The list contains one item for each ensemble predictor.
+                use tabpfn.utils.collate_for_tabpfn_dataset to use this function with
+                batch sizes of more than one dataset (see examples/tabpfn_finetune.py)
+            y_preprocessed: The target variable obtained from the preprocessed Dataset
+            cat_ix: categorical indices obtained from the preprocessed Dataset
+            configs: Ensemble configurations obtained from the preprocessed Dataset
+            no_refit: if True, the classifier will not be reinitialized when calling
+                fit multiple times.
+        """
+        if self.fit_mode != "batched":
+            logging.warning(
+                "The model was not in 'batched' mode. "
+                "Automatically switching to 'batched' mode for finetuning."
+            )
+            self.fit_mode = "batched"
+
+        # If there is a model, and we are lazy, we skip reinitialization
+        if not hasattr(self, "model_") or not no_refit:
+            byte_size, rng = self._initialize_model_variables()
+        else:
+            _, rng = infer_random_state(self.random_state)
+            _, _, byte_size = determine_precision(
+                self.inference_precision, self.devices_
+            )
+            rng = None
+
+        if model:
+            self.model_ = model
+        # Create the inference engine
+        self.executor_ = create_inference_engine(
+            X_train=X_preprocessed,
+            y_train=y_preprocessed,
+            model=self.model_,
+            ensemble_configs=configs,
+            cat_ix=cat_ix,
+            fit_mode="batched",
+            devices_=self.devices_,
+            rng=rng,
+            n_jobs=self.n_jobs,
+            byte_size=byte_size,
+            forced_inference_dtype_=self.forced_inference_dtype_,
+            memory_saving_mode=self.memory_saving_mode,
+            use_autocast_=self.use_autocast_,
+            inference_mode=not self.differentiable_input,
+        )
+        return self
+
+
 
 @support_save_peak_mem_factor  # type: ignore
 def _compute(
